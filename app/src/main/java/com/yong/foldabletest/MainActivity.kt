@@ -20,18 +20,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 import androidx.window.layout.WindowLayoutInfo
+import com.yong.foldabletest.fold.FoldPosture
+import com.yong.foldabletest.fold.boundsIn
 import com.yong.foldabletest.fold.foldingFeature
 import com.yong.foldabletest.fold.toFoldPosture
 import com.yong.foldabletest.ui.theme.FoldableAPITheme
@@ -74,30 +82,31 @@ fun MainScreen(
     // Remember dialog state for recomposition when fold/unfold device
     var showDialog by rememberSaveable { mutableStateOf(false) }
 
+    val posture = foldingFeature.toFoldPosture()
+    var layoutBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { layoutBoundsInWindow = it.boundsInWindow() },
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Image(
-                modifier = Modifier.size(240.dp),
-                painter = painterResource(R.drawable.image),
-                contentDescription = null,
+        when (posture) {
+            // Normal UI
+            FoldPosture.NoFold, FoldPosture.Flat -> DefaultLayout(
+                onOpenDialog = { showDialog = true },
             )
-            Button(
-                onClick = { showDialog = true },
-            ) {
-                Text(text = "Open Dialog")
-            }
+
+            // TODO: Implement Book UI
+            FoldPosture.Book -> {}
+
+            // TODO: Implement Tabletop UI
+            FoldPosture.Tabletop -> {}
         }
         Text(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp),
-            text = "Posture: ${foldingFeature.toFoldPosture()}",
+            text = "Posture: $posture",
             style = MaterialTheme.typography.labelLarge,
         )
     }
@@ -111,34 +120,125 @@ fun MainScreen(
 }
 
 @Composable
+private fun DefaultLayout(
+    onOpenDialog: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        PostureImage(
+            modifier = Modifier.size(240.dp),
+        )
+        OpenDialogButton(
+            onClick = onOpenDialog,
+        )
+    }
+}
+
+@Composable
+private fun PostureImage(
+    modifier: Modifier = Modifier,
+) {
+    Image(
+        modifier = modifier,
+        painter = painterResource(R.drawable.image),
+        contentDescription = null,
+    )
+}
+
+@Composable
+private fun OpenDialogButton(
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+    ) {
+        Text(text = "Open Dialog")
+    }
+}
+
+@Composable
 fun InfoDialog(
     foldingFeature: FoldingFeature?,
     onDismiss: () -> Unit,
 ) {
+    val posture = foldingFeature.toFoldPosture()
+    // A default dialog is centered and would straddle the fold,
+    // so take the whole window instead and place the card on one side of the fold
+    val avoidFold = posture == FoldPosture.Tabletop
+
     Dialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = !avoidFold,
+            decorFitsSystemWindows = !avoidFold,
+        ),
     ) {
-        Card {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp),
+        when (posture) {
+            FoldPosture.Tabletop -> TabletopDialogLayout(
+                foldingFeature = foldingFeature!!,
             ) {
-                Text(
-                    text = "Dialog Title",
-                    style = MaterialTheme.typography.titleLarge,
+                InfoCard(
+                    foldingFeature = foldingFeature,
+                    onDismiss = onDismiss,
                 )
-                Text(
-                    modifier = Modifier.padding(top = 16.dp),
-                    text = foldingFeature.toDescription(),
-                )
-                TextButton(
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(top = 8.dp),
-                    onClick = onDismiss,
-                ) {
-                    Text(text = "Close")
-                }
+            }
+            FoldPosture.NoFold, FoldPosture.Flat, FoldPosture.Book -> InfoCard(
+                foldingFeature = foldingFeature,
+                onDismiss = onDismiss,
+            )
+        }
+    }
+}
+
+// Places the dialog content below the fold, where the user's hands are in tabletop posture
+@Composable
+private fun TabletopDialogLayout(
+    foldingFeature: FoldingFeature,
+    content: @Composable () -> Unit,
+) {
+    // Fold bounds are reported in the activity window, and this full-size dialog window shares its origin
+    var layoutBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
+    val foldBounds = foldingFeature.boundsIn(layoutBoundsInWindow)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { layoutBoundsInWindow = it.boundsInWindow() }
+            .padding(top = with(LocalDensity.current) { foldBounds.bottom.coerceAtLeast(0f).toDp() }),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun InfoCard(
+    foldingFeature: FoldingFeature?,
+    onDismiss: () -> Unit,
+) {
+    Card {
+        Column(
+            modifier = Modifier
+                .padding(24.dp),
+        ) {
+            Text(
+                text = "Dialog Title",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                modifier = Modifier.padding(top = 16.dp),
+                text = foldingFeature.toDescription(),
+            )
+            TextButton(
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(top = 8.dp),
+                onClick = onDismiss,
+            ) {
+                Text(text = "Close")
             }
         }
     }
