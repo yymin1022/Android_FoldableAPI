@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -27,13 +28,28 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import androidx.window.layout.WindowLayoutInfo
+import com.yong.foldabletest.fold.foldingFeature
+import com.yong.foldabletest.fold.toFoldPosture
 import com.yong.foldabletest.ui.theme.FoldableAPITheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Retrieve current window layout info
+        val windowLayoutInfoFlow = WindowInfoTracker.getOrCreate(this).windowLayoutInfo(this)
         setContent {
+            // Window layout info state
+            // - can be null, androidx.window is initialized
+            val windowLayoutInfo: WindowLayoutInfo? by windowLayoutInfoFlow.collectAsStateWithLifecycle(
+                initialValue = null,
+            )
+
             FoldableAPITheme {
                 Scaffold(
                     modifier = Modifier
@@ -42,6 +58,7 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         modifier = Modifier
                             .padding(innerPadding),
+                        foldingFeature = windowLayoutInfo?.foldingFeature(),
                     )
                 }
             }
@@ -51,37 +68,53 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(
+    foldingFeature: FoldingFeature?,
     modifier: Modifier = Modifier,
 ) {
     // Remember dialog state for recomposition when fold/unfold device
     var showDialog by rememberSaveable { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Image(
-            modifier = Modifier.size(240.dp),
-            painter = painterResource(R.drawable.image),
-            contentDescription = null,
-        )
-        Button(
-            onClick = { showDialog = true },
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Text(text = "Open Dialog")
+            Image(
+                modifier = Modifier.size(240.dp),
+                painter = painterResource(R.drawable.image),
+                contentDescription = null,
+            )
+            Button(
+                onClick = { showDialog = true },
+            ) {
+                Text(text = "Open Dialog")
+            }
         }
+        Text(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp),
+            text = "Posture: ${foldingFeature.toFoldPosture()}",
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 
     if (showDialog) {
         InfoDialog(
+            foldingFeature = foldingFeature,
             onDismiss = { showDialog = false },
         )
     }
 }
 
 @Composable
-fun InfoDialog(onDismiss: () -> Unit) {
+fun InfoDialog(
+    foldingFeature: FoldingFeature?,
+    onDismiss: () -> Unit,
+) {
     Dialog(
         onDismissRequest = onDismiss,
     ) {
@@ -96,7 +129,7 @@ fun InfoDialog(onDismiss: () -> Unit) {
                 )
                 Text(
                     modifier = Modifier.padding(top = 16.dp),
-                    text = "Dialog Description",
+                    text = foldingFeature.toDescription(),
                 )
                 TextButton(
                     modifier = Modifier
@@ -111,10 +144,26 @@ fun InfoDialog(onDismiss: () -> Unit) {
     }
 }
 
+// Raw FoldingFeature values to compare with the derived posture
+private fun FoldingFeature?.toDescription(): String = if (this == null) {
+    "Posture: ${toFoldPosture()}\nNo FoldingFeature reported"
+} else {
+    """
+    Posture: ${toFoldPosture()}
+    State: $state
+    Orientation: $orientation
+    isSeparating: $isSeparating
+    OcclusionType: $occlusionType
+    Bounds: $bounds
+    """.trimIndent()
+}
+
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
     FoldableAPITheme {
-        MainScreen()
+        MainScreen(
+            foldingFeature = null,
+        )
     }
 }
