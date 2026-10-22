@@ -8,12 +8,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -99,8 +103,11 @@ fun MainScreen(
                 onOpenDialog = { showDialog = true },
             )
 
-            // TODO: Implement Book UI
-            FoldPosture.Book -> {}
+            // Book UI
+            FoldPosture.Book -> BookLayout(
+                foldBounds = foldingFeature!!.boundsIn(layoutBoundsInWindow),
+                onOpenDialog = { showDialog = true },
+            )
 
             // Tabletop UI
             FoldPosture.Tabletop -> TabletopLayout(
@@ -184,6 +191,49 @@ private fun TabletopLayout(
     }
 }
 
+// Image on the left page, button on the right page, like an open book
+@Composable
+private fun BookLayout(
+    foldBounds: Rect,
+    onOpenDialog: () -> Unit,
+) {
+    val density = LocalDensity.current
+
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        // Fold bounds are absolute, so children must not be reordered in RTL
+        horizontalArrangement = Arrangement.Absolute.Left,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(with(density) { foldBounds.left.coerceAtLeast(0f).toDp() }),
+            contentAlignment = Alignment.Center,
+        ) {
+            PostureImage(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+            )
+        }
+        // Keep the hinge area empty, since it can occlude content on some devices
+        Spacer(
+            modifier = Modifier
+                .width(with(density) { foldBounds.width.toDp() }),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            OpenDialogButton(
+                onClick = onOpenDialog,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PostureImage(
     modifier: Modifier = Modifier,
@@ -214,7 +264,7 @@ fun InfoDialog(
     val posture = foldingFeature.toFoldPosture()
     // A default dialog is centered and would straddle the fold,
     // so take the whole window instead and place the card on one side of the fold
-    val avoidFold = posture == FoldPosture.Tabletop
+    val avoidFold = posture == FoldPosture.Tabletop || posture == FoldPosture.Book
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -224,7 +274,7 @@ fun InfoDialog(
         ),
     ) {
         when (posture) {
-            FoldPosture.Tabletop -> TabletopDialogLayout(
+            FoldPosture.Tabletop, FoldPosture.Book -> FoldAvoidingDialogLayout(
                 foldingFeature = foldingFeature!!,
             ) {
                 InfoCard(
@@ -232,7 +282,7 @@ fun InfoDialog(
                     onDismiss = onDismiss,
                 )
             }
-            FoldPosture.NoFold, FoldPosture.Flat, FoldPosture.Book -> InfoCard(
+            FoldPosture.NoFold, FoldPosture.Flat -> InfoCard(
                 foldingFeature = foldingFeature,
                 onDismiss = onDismiss,
             )
@@ -240,21 +290,34 @@ fun InfoDialog(
     }
 }
 
-// Places the dialog content below the fold, where the user's hands are in tabletop posture
+// Places the dialog content on one side of the fold:
+// - Below a horizontal fold (tabletop), where the user's hands are
+// - Right of a vertical fold (book), next to the button that opened it
 @Composable
-private fun TabletopDialogLayout(
+private fun FoldAvoidingDialogLayout(
     foldingFeature: FoldingFeature,
     content: @Composable () -> Unit,
 ) {
     // Fold bounds are reported in the activity window, and this full-size dialog window shares its origin
     var layoutBoundsInWindow by remember { mutableStateOf(Rect.Zero) }
     val foldBounds = foldingFeature.boundsIn(layoutBoundsInWindow)
+    val contentPadding = with(LocalDensity.current) {
+        when (foldingFeature.orientation) {
+            FoldingFeature.Orientation.HORIZONTAL -> PaddingValues(
+                top = foldBounds.bottom.coerceAtLeast(0f).toDp(),
+            )
+            // Fold bounds are absolute, so the padding must not flip in RTL
+            else -> PaddingValues.Absolute(
+                left = foldBounds.right.coerceAtLeast(0f).toDp(),
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { layoutBoundsInWindow = it.boundsInWindow() }
-            .padding(top = with(LocalDensity.current) { foldBounds.bottom.coerceAtLeast(0f).toDp() }),
+            .padding(contentPadding),
         contentAlignment = Alignment.Center,
     ) {
         content()
