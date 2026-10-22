@@ -8,7 +8,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
@@ -99,8 +102,11 @@ fun MainScreen(
             // TODO: Implement Book UI
             FoldPosture.Book -> {}
 
-            // TODO: Implement Tabletop UI
-            FoldPosture.Tabletop -> {}
+            // Tabletop UI
+            FoldPosture.Tabletop -> TabletopLayout(
+                foldBounds = foldingFeature!!.boundsIn(layoutBoundsInWindow),
+                onOpenDialog = { showDialog = true },
+            )
         }
         Text(
             modifier = Modifier
@@ -134,6 +140,47 @@ private fun DefaultLayout(
         OpenDialogButton(
             onClick = onOpenDialog,
         )
+    }
+}
+
+// Image above the fold, button below it, like a laptop's screen and keyboard
+@Composable
+private fun TabletopLayout(
+    foldBounds: Rect,
+    onOpenDialog: () -> Unit,
+) {
+    val density = LocalDensity.current
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(with(density) { foldBounds.top.coerceAtLeast(0f).toDp() }),
+            contentAlignment = Alignment.Center,
+        ) {
+            PostureImage(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+            )
+        }
+        // Keep the hinge area empty, since it can occlude content on some devices
+        Spacer(
+            modifier = Modifier
+                .height(with(density) { foldBounds.height.toDp() }),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            OpenDialogButton(
+                onClick = onOpenDialog,
+            )
+        }
     }
 }
 
