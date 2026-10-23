@@ -48,8 +48,10 @@ import androidx.window.layout.WindowLayoutInfo
 import com.yong.foldabletest.fold.FoldPosture
 import com.yong.foldabletest.fold.boundsIn
 import com.yong.foldabletest.fold.foldingFeature
+import com.yong.foldabletest.fold.hingeAngleFlow
 import com.yong.foldabletest.fold.toFoldPosture
 import com.yong.foldabletest.ui.theme.FoldableAPITheme
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,12 +60,19 @@ class MainActivity : ComponentActivity() {
 
         // Retrieve current window layout info
         val windowLayoutInfoFlow = WindowInfoTracker.getOrCreate(this).windowLayoutInfo(this)
+        // Retrieve hinge angle, null if the device has no hinge angle sensor
+        val hingeAngleFlow = hingeAngleFlow()
         setContent {
             // Window layout info state
             // - can be null, androidx.window is initialized
             val windowLayoutInfo: WindowLayoutInfo? by windowLayoutInfoFlow.collectAsStateWithLifecycle(
                 initialValue = null,
             )
+            // Hinge angle state
+            // - null until the first sensor event, or if the device has no hinge angle sensor
+            val hingeAngle: Float? = hingeAngleFlow?.collectAsStateWithLifecycle(
+                initialValue = null,
+            )?.value
 
             FoldableAPITheme {
                 Scaffold(
@@ -74,6 +83,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .padding(innerPadding),
                         foldingFeature = windowLayoutInfo?.foldingFeature(),
+                        hingeAngle = hingeAngle,
                     )
                 }
             }
@@ -84,6 +94,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     foldingFeature: FoldingFeature?,
+    hingeAngle: Float?,
     modifier: Modifier = Modifier,
 ) {
     // Remember dialog state for recomposition when fold/unfold device
@@ -119,7 +130,7 @@ fun MainScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp),
-            text = "Posture: $posture",
+            text = "Posture: $posture\nHinge: ${hingeAngle?.let { "${it.roundToInt()}°" } ?: "N/A"}",
             style = MaterialTheme.typography.labelLarge,
         )
     }
@@ -374,6 +385,7 @@ fun MainScreenPreview() {
     FoldableAPITheme {
         MainScreen(
             foldingFeature = null,
+            hingeAngle = null,
         )
     }
 }
