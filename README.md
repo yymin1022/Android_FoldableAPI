@@ -1,4 +1,4 @@
-# Project Title
+# Foldable API Tester
 
 Simple foldable state checker using [Android WindowManager API](https://developer.android.com/develop/ui/compose/layouts/adaptive/foldables/make-your-app-fold-aware).
 
