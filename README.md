@@ -1,6 +1,8 @@
 # Project Title
 
-This is a simple README.md Template repository for my useful projects. This paragraph can be replaced with individual project descriptions.
+Simple foldable state checker using [Android WindowManager API](https://developer.android.com/develop/ui/compose/layouts/adaptive/foldables/make-your-app-fold-aware).
+
+Show current foldable state, device hinge angle value if available.
 
 ## Project Overview
 
@@ -10,12 +12,12 @@ This is a simple README.md Template repository for my useful projects. This para
 
 1. Clone this repository on your local environment
    ```bash
-   yong@ubuntu-server ~/ :$ git clone https://github.com/yymin1022/Useful_README.git
+   yong@ubuntu-server ~/ :$ git clone https://github.com/yymin1022/Android_FoldableAPI.git
    ```
 3. Build with gradle, and install to your own device
    ```bash
-   yong@ubuntu-server ~/ :$ cd Useful_README
-   yong@ubuntu-server ~/Useful_README/ :$ ./gradlew build
+   yong@ubuntu-server ~/ :$ cd Android_FoldableAPI
+   yong@ubuntu-server ~/Android_FoldableAPI/ :$ ./gradlew build
    ```
 
 ## Team Members
@@ -28,11 +30,7 @@ This is a simple README.md Template repository for my useful projects. This para
 
 ## Screenshots
 
-<p align="left">
-  <img src="https://github.com/user-attachments/assets/5258a517-7d27-4cc8-b1b9-b2f48fedc8d5" width=30%>
-  <img src="https://github.com/user-attachments/assets/5258a517-7d27-4cc8-b1b9-b2f48fedc8d5" width=30%>
-  <img src="https://github.com/user-attachments/assets/5258a517-7d27-4cc8-b1b9-b2f48fedc8d5" width=30%>
-</p>
+> Coming soon
 
 ## Useful links
 
