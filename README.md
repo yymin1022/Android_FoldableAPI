@@ -34,6 +34,5 @@ Show current foldable state, device hinge angle value if available.
 
 ## Useful links
 
-- [GitHub](https://github.com/yymin1022)
-- [Instagram](https://instagram.com/useful_min)
-- [LinkedIn](https://linkedin.com/in/yymin1022)
+- [Official sample project]([https://github.com/googlesamples/mlkit/tree/master/android/vision-quickstart](https://github.com/android/platform-samples/tree/main/samples/user-interface/windowmanager))
+- [Official guide](https://developer.android.com/develop/ui/compose/layouts/adaptive/foldables/make-your-app-fold-aware)
