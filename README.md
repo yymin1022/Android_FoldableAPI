@@ -6,7 +6,9 @@ Show current foldable state, device hinge angle value if available.
 
 ## Project Overview
 
-> This area can be replaced with overview image, or removed.
+> This diagram is generated with Claude
+
+![project_overview](images/project_overview.png)
 
 ## Get Started
 
